@@ -143,22 +143,26 @@ class StrView:
     def find(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
         if isinstance(sub, self.__class__):
             sub = str(sub)
-        return self.data.find(sub, self.start + start, min(self.end, end))
+        i = self.data.find(sub, self.start + start, min(self.end, end))
+        return -1 if i == -1 else i - self.start
 
     def index(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
         if isinstance(sub, self.__class__):
             sub = str(sub)
-        return self.data.index(sub, self.start + start, min(self.end, end))
+        i = self.data.index(sub, self.start + start, min(self.end, end))
+        return i - self.start
 
     def rfind(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
         if isinstance(sub, self.__class__):
             sub = str(sub)
-        return self.data.rfind(sub, self.start + start, min(self.end, end))
+        i = self.data.rfind(sub, self.start + start, min(self.end, end))
+        return -1 if i == -1 else i - self.start
 
     def rindex(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
         if isinstance(sub, self.__class__):
             sub = str(sub)
-        return self.data.rindex(sub, self.start + start, min(self.end, end))
+        i = self.data.rindex(sub, self.start + start, min(self.end, end))
+        return i - self.start
 
     def __contains__(self, sub: Any) -> bool:
         return self.find(sub) != -1
