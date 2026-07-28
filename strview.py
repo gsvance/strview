@@ -93,7 +93,10 @@ class StrView:
         i = self.find(delim)
         if i == -1:
             return self, self.__class__(self, start=self.length)
-        return self.__class__(self, length=i), self.__class__(self, start=i)
+        return (
+            self.__class__(self, length=i),
+            self.__class__(self, start=i + len(delim)),
+        )
 
     def lchop_int(self) -> tuple[int, Self]:
         signs = self.__class__('-+')
