@@ -3,7 +3,8 @@
 
 import string
 import sys
-from typing import Any, Self
+import typing
+from typing import Any, Callable, Self
 
 
 class StrView:
@@ -76,6 +77,53 @@ class StrView:
             repr(self.length),
             ')',
         ])
+
+    def lchop(self, n: int) -> tuple[Self, Self]:
+        n = min(n, self.length)
+        return self.__class__(self, length=n), self.__class__(self, start=n)
+
+    def rchop(self, n: int) -> tuple[Self, Self]:
+        n = min(n, self.length)
+        return (
+            self.__class__(self, length=self.length - n),
+            self.__class__(self, start=self.length - n),
+        )
+
+    def lchop_by_delim(self, delim: Self | str) -> tuple[Self, Self]:
+        i = self.find(delim)
+        if i == -1:
+            return self, self.__class__(self, start=self.length)
+        return self.__class__(self, length=i), self.__class__(self, start=i)
+
+    def lchop_int(self) -> tuple[int, Self]:
+        signs = self.__class__('-+')
+        i = 0
+        while i < self.length:
+            self_i = self[i]
+            if self_i.isdigit() or (i == 0 and self_i in signs):
+                i += 1
+            else:
+                break
+        return (
+            int(self.__class__(self, length=i)),
+            self.__class__(self, start=i),
+        )
+
+    def lchop_while(
+        self, predicate: Callable[[Self], bool],
+    ) -> tuple[Self, Self]:
+        i = 0
+        while i < self.length and predicate(self[i]):
+            i += 1
+        return self.lchop(i)
+
+    def ltake_while(
+        self, predicate: Callable[[Self], bool],
+    ) -> tuple[Self, Self]:
+        i = 0
+        while i < self.length and predicate(self[i]):
+            i += 1
+        return self.__class__(self, length=i), self.__class__(self, start=i)
 
     # These methods are the same as those on Python's str class, but there's
     # something a little more sensible we should do when we have a view.
@@ -312,7 +360,15 @@ class StrView:
     def __len__(self) -> int:
         return self.length
 
-    def __getitem__(self, index: Any) -> Self | str:
+    @typing.overload
+    def __getitem__(self, index: int) -> Self:
+        ...
+
+    @typing.overload
+    def __getitem__(self, index: slice) -> Self | str:
+        ...
+
+    def __getitem__(self, index):
         if isinstance(index, int):
             return self.__class__(self, start=index, length=1)
         if isinstance(index, slice) and index.step == 1:
@@ -350,10 +406,10 @@ class StrView:
         return str(self).center(width, *args)
 
     def encode(
-            self,
-            encoding: str | None = 'utf-8',
-            errors: str | None = 'strict',
-        ) -> bytes:
+        self,
+        encoding: str | None = 'utf-8',
+        errors: str | None = 'strict',
+    ) -> bytes:
         encoding = 'utf-8' if encoding is None else encoding
         errors = 'strict' if errors is None else errors
         return str(self).encode(encoding, errors)
