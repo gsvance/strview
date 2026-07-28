@@ -145,10 +145,14 @@ class TestStrView(unittest.TestCase):
         }
     '''
 
-    def test_find(self) -> None:
+    def test_find_and_index(self) -> None:
         index = StrView("hello world").find(' ')
         self.assertNotEqual(index, -1)
         self.assertEqual(5, index)
+
+        sv = StrView('hi world', start=3)
+        index = sv.index('w')
+        self.assertEqual(0, index)
 
     def test_prefix_suffix_check(self) -> None:
         self.assertTrue(StrView("Hello, World").startswith(StrView("Hello")))
