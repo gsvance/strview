@@ -153,8 +153,7 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+        sub = _ensure_str(sub)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         i = self.data.find(sub, self.start + start, min(self.end, end))
@@ -167,8 +166,7 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+        sub = _ensure_str(sub)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         i = self.data.index(sub, self.start + start, min(self.end, end))
@@ -181,8 +179,7 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+        sub = _ensure_str(sub)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         i = self.data.rfind(sub, self.start + start, min(self.end, end))
@@ -195,8 +192,7 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+        sub = _ensure_str(sub)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         i = self.data.rindex(sub, self.start + start, min(self.end, end))
@@ -209,8 +205,7 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+        sub = _ensure_str(sub)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         return self.data.count(sub, self.start + start, min(self.end, end))
@@ -225,13 +220,10 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> bool:
-        if isinstance(prefix, self.__class__):
-            prefix = str(prefix)
-        elif isinstance(prefix, tuple):
-            prefix = tuple(
-                (str(p) if isinstance(p, self.__class__) else p)
-                for p in prefix
-            )
+        if not isinstance(prefix, tuple):
+            prefix = _ensure_str(prefix)
+        else:
+            prefix = tuple(_ensure_str(x) for x in prefix)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         return self.data.startswith(
@@ -245,13 +237,10 @@ class StrView:
         end: SupportsIndex | None = None,
         /,
     ) -> bool:
-        if isinstance(suffix, self.__class__):
-            suffix = str(suffix)
-        elif isinstance(suffix, tuple):
-            suffix = tuple(
-                (str(s) if isinstance(s, self.__class__) else s)
-                for s in suffix
-            )
+        if not isinstance(suffix, tuple):
+            suffix = _ensure_str(suffix)
+        else:
+            suffix = tuple(_ensure_str(x) for x in suffix)
         start = 0 if start is None else start.__index__()
         end = sys.maxsize if end is None else end.__index__()
         return self.data.endswith(
@@ -452,13 +441,7 @@ class StrView:
         ...
 
     @typing.overload
-    def __getitem__(
-        self,
-        key: slice[
-            SupportsIndex | None, SupportsIndex | None, SupportsIndex | None,
-        ],
-        /,
-    ) -> Self | str:
+    def __getitem__(self, key: slice, /) -> Self | str:
         ...
 
     def __getitem__(self, key, /):
@@ -535,9 +518,7 @@ class StrView:
         return str(self).zfill(width.__index__())
 
     def join(self, iterable: Iterable[Self | str], /) -> str:
-        return str(self).join(
-            (str(x) if isinstance(x, self.__class__) else x) for x in iterable
-        )
+        return str(self).join(_ensure_str(x) for x in iterable)
 
     def isalpha(self) -> bool:
         return str(self).isalpha()
@@ -583,10 +564,8 @@ class StrView:
     def replace(
         self, old: Self | str, new: Self | str, /, count: SupportsIndex = -1,
     ) -> str:
-        if isinstance(old, self.__class__):
-            old = str(old)
-        if isinstance(new, self.__class__):
-            new = str(new)
+        old = _ensure_str(old)
+        new = _ensure_str(new)
         count = count.__index__()
         return str(self).replace(old, new, count)
 
@@ -604,3 +583,11 @@ class StrView:
         encoding = 'utf-8' if encoding is None else encoding
         errors = 'strict' if errors is None else errors
         return str(self).encode(encoding, errors)
+
+
+def _ensure_str(s_or_sv: str | StrView) -> str:
+    if type(s_or_sv) is str:
+        return s_or_sv
+    if isinstance(s_or_sv, (StrView, str)):
+        return str(s_or_sv)
+    raise TypeError(f'expected str or str view, but got {type(s_or_sv)}')
