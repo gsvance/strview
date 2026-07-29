@@ -1,7 +1,7 @@
 """strview.py
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sized
 import string
 import sys
 import typing
@@ -16,21 +16,21 @@ class StrView:
         self,
         data: str | Self,
         *,
-        start: int = 0,
-        length: int | None = None,
+        start: SupportsIndex = 0,
+        length: SupportsIndex | None = None,
     ) -> None:
         if isinstance(data, str):
             self._data: str = str(data)
-            self._start: int = int(start)
+            self._start: int = _normalize_index(start, self.data)
             if length is None:
                 length = len(self.data) - self.start
-            self._length: int = int(length)
+            self._length: int = length.__index__()
         elif isinstance(data, self.__class__):
             self._data: str = data.data
-            self._start: int = data.start + int(start)
+            self._start: int = data.start + _normalize_index(start, data)
             if length is None:
                 length = data.length - (self.start - data.start)
-            self._length: int = int(length)
+            self._length: int = length.__index__()
         else:
             raise TypeError(
                 f'{self.__class__.__name__} data must be either '
@@ -57,12 +57,12 @@ class StrView:
     def _validate(self) -> None:
         if self.start > len(self.data):
             raise IndexError('start index is beyond end of data')
-        if self.start < -len(self.data):
-            raise IndexError('negative start index is before start of data')
+        if self.start < 0:
+            raise IndexError('start index is before start of data')
         if self.length < 0:
             raise IndexError('length is less than zero')
         if self.end > len(self.data):
-            raise IndexError('length extends beyond the end of data')
+            raise IndexError('length extends beyond end of data')
 
     def __str__(self) -> str:
         return self.data[self.start:self.end]
@@ -81,10 +81,14 @@ class StrView:
 
     def lchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
         n = min(n.__index__(), self.length)
+        if n < 0:
+            raise ValueError('negative number of characters to chop')
         return self.__class__(self, length=n), self.__class__(self, start=n)
 
     def rchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
         n = min(n.__index__(), self.length)
+        if n < 0:
+            raise ValueError('negative number of characters to chop')
         return (
             self.__class__(self, length=self.length - n),
             self.__class__(self, start=self.length - n),
@@ -151,8 +155,8 @@ class StrView:
         /,
     ) -> int:
         sub = _ensure_str(sub)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         i = self.data.find(sub, self.start + start, min(self.end, end))
         return -1 if i == -1 else i - self.start
 
@@ -164,8 +168,8 @@ class StrView:
         /,
     ) -> int:
         sub = _ensure_str(sub)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         i = self.data.index(sub, self.start + start, min(self.end, end))
         return i - self.start
 
@@ -177,8 +181,8 @@ class StrView:
         /,
     ) -> int:
         sub = _ensure_str(sub)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         i = self.data.rfind(sub, self.start + start, min(self.end, end))
         return -1 if i == -1 else i - self.start
 
@@ -190,8 +194,8 @@ class StrView:
         /,
     ) -> int:
         sub = _ensure_str(sub)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         i = self.data.rindex(sub, self.start + start, min(self.end, end))
         return i - self.start
 
@@ -203,8 +207,8 @@ class StrView:
         /,
     ) -> int:
         sub = _ensure_str(sub)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         return self.data.count(sub, self.start + start, min(self.end, end))
 
     def __contains__(self, sub: Self | str, /) -> bool:
@@ -226,8 +230,8 @@ class StrView:
             prefix = _ensure_str(prefix)
         else:
             prefix = tuple(_ensure_str(x) for x in prefix)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         return self.data.startswith(
             prefix, self.start + start, min(self.end, end),
         )
@@ -243,8 +247,8 @@ class StrView:
             suffix = _ensure_str(suffix)
         else:
             suffix = tuple(_ensure_str(x) for x in suffix)
-        start = 0 if start is None else start.__index__()
-        end = sys.maxsize if end is None else end.__index__()
+        start = 0 if start is None else _normalize_index(start, self)
+        end = sys.maxsize if end is None else _normalize_index(end, self)
         return self.data.endswith(
             suffix, self.start + start, min(self.end, end),
         )
@@ -303,6 +307,8 @@ class StrView:
         self, sep: Self | str | None = None, maxsplit: SupportsIndex = -1,
     ) -> list[Self]:
         maxsplit = maxsplit.__index__()
+        if maxsplit < -1:
+            raise ValueError('maxsplit must be -1 or greater')
 
         if sep is None:
             parts: list[Self] = []
@@ -343,6 +349,8 @@ class StrView:
         self, sep: Self | str | None = None, maxsplit: SupportsIndex = -1,
     ) -> list[Self]:
         maxsplit = maxsplit.__index__()
+        if maxsplit < -1:
+            raise ValueError('maxsplit must be -1 or greater')
 
         if sep is None:
             parts: list[Self] = []
@@ -443,21 +451,17 @@ class StrView:
 
     def __getitem__(self, key, /):
         try:
-            key = key.__index__()
+            return self.__class__(self, start=key.__index__(), length=1)
         except AttributeError:
             pass
-        else:
-            return self.__class__(self, start=key, length=1)
 
         if (
             isinstance(key, slice)
             and (key.step is None or key.step.__index__() == 1)
         ):
-            return self.__class__(
-                self,
-                start=key.start.__index__(),
-                length=key.stop.__index__() - key.start.__index__(),
-            )
+            length = key.stop.__index__() - key.start.__index__()
+            return self.__class__(self, start=key.start, length=length)
+
         return str(self)[key]
 
     def __add__(self, other: Self | str, /) -> str:
@@ -563,7 +567,7 @@ class StrView:
     ) -> str:
         old = _ensure_str(old)
         new = _ensure_str(new)
-        count = count.__index__()
+        count = count.__index__()  # If count < -1, let str.replace() raise
         return str(self).replace(old, new, count)
 
     def format(self, *args: Any, **kwargs: Any) -> str:
@@ -588,3 +592,32 @@ def _ensure_str(s_or_sv: str | StrView) -> str:
     if isinstance(s_or_sv, (StrView, str)):
         return str(s_or_sv)
     raise TypeError(f'expected str or str view, but got {type(s_or_sv)}')
+
+
+def _normalize_index(index: SupportsIndex, sized: Sized) -> int:
+    """Resolve an index to a zero-based position within len(sized).
+
+    Negative indices from -1 down to -len(sized) count backwards from the end
+    in Python. Resolve anything like that to a simple, zero-based index.
+
+    >>> _normalize_index(2, 'abcd')
+    2
+    >>> _normalize_index(-3, 'abcd')
+    1
+    >>> _normalize_index(8, 'abcd')
+    8
+    >>> _normalize_index(-6, 'abcd')
+    -2
+
+    Args:
+        index (SupportsIndex): An index that may or may not be negative.
+        sized (Sized): Object whose length is to be used for normalizing.
+
+    Returns:
+        int: Normalized zero-based index, always greater than -1 and less than
+             len(sized), unless the original index was out-of-bounds.
+    """
+    index = index.__index__()
+    if index >= 0:
+        return index
+    return len(sized) - abs(index)
