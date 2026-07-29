@@ -79,18 +79,18 @@ class StrView:
             ')',
         ])
 
-    def lchop(self, n: int) -> tuple[Self, Self]:
-        n = min(n, self.length)
+    def lchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
+        n = min(n.__index__(), self.length)
         return self.__class__(self, length=n), self.__class__(self, start=n)
 
-    def rchop(self, n: int) -> tuple[Self, Self]:
-        n = min(n, self.length)
+    def rchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
+        n = min(n.__index__(), self.length)
         return (
             self.__class__(self, length=self.length - n),
             self.__class__(self, start=self.length - n),
         )
 
-    def lchop_by_delim(self, delim: Self | str) -> tuple[Self, Self]:
+    def lchop_by_delim(self, delim: Self | str, /) -> tuple[Self, Self]:
         i = self.find(delim)
         if i == -1:
             return self, self.__class__(self, start=self.length)
@@ -103,8 +103,8 @@ class StrView:
         signs = self.__class__('-+')
         i = 0
         while i < self.length:
-            self_i = self[i]
-            if self_i.isdigit() or (i == 0 and self_i in signs):
+            char_at_i = self[i]
+            if char_at_i.isdigit() or (i == 0 and char_at_i in signs):
                 i += 1
             else:
                 break
@@ -114,7 +114,7 @@ class StrView:
         )
 
     def lchop_while(
-        self, predicate: Callable[[Self], bool],
+        self, predicate: Callable[[Self], bool], /,
     ) -> tuple[Self, Self]:
         i = 0
         while i < self.length and predicate(self[i]):
@@ -122,7 +122,7 @@ class StrView:
         return self.lchop(i)
 
     def ltake_while(
-        self, predicate: Callable[[Self], bool],
+        self, predicate: Callable[[Self], bool], /,
     ) -> tuple[Self, Self]:
         i = 0
         while i < self.length and predicate(self[i]):
