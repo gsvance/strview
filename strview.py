@@ -120,13 +120,11 @@ class StrView:
             i += 1
         return self.lchop(i)
 
-    def ltake_while(
-        self, predicate: Callable[[Self], bool], /,
-    ) -> tuple[Self, Self]:
+    def ltake_while(self, predicate: Callable[[Self], bool], /) -> Self:
         i = 0
         while i < self.length and predicate(self[i]):
             i += 1
-        return self.__class__(self, length=i), self.__class__(self, start=i)
+        return self.__class__(self, length=i)
 
     # These methods are the same as those on Python's str class, but there's
     # something a little more sensible we should do when we have a view.
