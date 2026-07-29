@@ -124,26 +124,18 @@ class TestStrView(unittest.TestCase):
         self.assertEqual(StrView(""), input_)
         self.assertEqual(StrView("helloworld"), hello)
 
-    '''
-    # Equals, ignoring case
-        # exactly equal
-        {
-            String_View input = SV_STATIC("hello, world");
-            ASSERT_TRUE(sv_eq_ignorecase(input, SV("hello, world")));
-        }
+    def test_equals_ignoring_case(self) -> None:
+        # Exactly equal
+        input_ = StrView("hello, world")
+        self.assertTrue(input_.eq_ignorecase(StrView("hello, world")))
 
-        # equal ignoring case
-        {
-            String_View input = SV_STATIC("Hello, World");
-            ASSERT_TRUE(sv_eq_ignorecase(input, SV("hello, world")));
-        }
+        # Equal ignoring case
+        input_ = StrView("Hello, World")
+        self.assertTrue(input_.eq_ignorecase(StrView("hello, world")))
 
-        # unequal
-        {
-            String_View input = SV_STATIC("Goodbye, World");
-            ASSERT_TRUE(!(sv_eq_ignorecase(input, SV("Hello, World"))));
-        }
-    '''
+        # Unequal
+        input_ = StrView("Goodbye, World")
+        self.assertFalse(input_.eq_ignorecase(StrView("Hello, World")))
 
     def test_find_and_index(self) -> None:
         index = StrView("hello world").find(' ')
