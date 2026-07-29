@@ -1,10 +1,11 @@
 """strview.py
 """
 
+from collections.abc import Iterable
 import string
 import sys
 import typing
-from typing import Any, Callable, Self
+from typing import Any, Callable, SupportsIndex, Self
 
 
 class StrView:
@@ -78,18 +79,18 @@ class StrView:
             ')',
         ])
 
-    def lchop(self, n: int) -> tuple[Self, Self]:
-        n = min(n, self.length)
+    def lchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
+        n = min(n.__index__(), self.length)
         return self.__class__(self, length=n), self.__class__(self, start=n)
 
-    def rchop(self, n: int) -> tuple[Self, Self]:
-        n = min(n, self.length)
+    def rchop(self, n: SupportsIndex, /) -> tuple[Self, Self]:
+        n = min(n.__index__(), self.length)
         return (
             self.__class__(self, length=self.length - n),
             self.__class__(self, start=self.length - n),
         )
 
-    def lchop_by_delim(self, delim: Self | str) -> tuple[Self, Self]:
+    def lchop_by_delim(self, delim: Self | str, /) -> tuple[Self, Self]:
         i = self.find(delim)
         if i == -1:
             return self, self.__class__(self, start=self.length)
@@ -102,8 +103,8 @@ class StrView:
         signs = self.__class__('-+')
         i = 0
         while i < self.length:
-            self_i = self[i]
-            if self_i.isdigit() or (i == 0 and self_i in signs):
+            char_at_i = self[i]
+            if char_at_i.isdigit() or (i == 0 and char_at_i in signs):
                 i += 1
             else:
                 break
@@ -113,7 +114,7 @@ class StrView:
         )
 
     def lchop_while(
-        self, predicate: Callable[[Self], bool],
+        self, predicate: Callable[[Self], bool], /,
     ) -> tuple[Self, Self]:
         i = 0
         while i < self.length and predicate(self[i]):
@@ -121,7 +122,7 @@ class StrView:
         return self.lchop(i)
 
     def ltake_while(
-        self, predicate: Callable[[Self], bool],
+        self, predicate: Callable[[Self], bool], /,
     ) -> tuple[Self, Self]:
         i = 0
         while i < self.length and predicate(self[i]):
@@ -131,8 +132,10 @@ class StrView:
     # These methods are the same as those on Python's str class, but there's
     # something a little more sensible we should do when we have a view.
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: Any, /) -> bool:
         if isinstance(other, self.__class__):
+            if self.length != other.length:
+                return False
             if self.data is other.data:
                 return (
                     self.start == other.start and self.length == other.length
@@ -140,71 +143,125 @@ class StrView:
             return str(self) == str(other)
         return str(self) == other
 
-    def find(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+    # There's no need to define __ne__() since object has a default
+    # implementation that just negates whatever __eq__() returns.
+
+    def find(
+        self,
+        sub: Self | str,
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
+    ) -> int:
+        sub = _ensure_str(sub)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         i = self.data.find(sub, self.start + start, min(self.end, end))
         return -1 if i == -1 else i - self.start
 
-    def index(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+    def index(
+        self,
+        sub: Self | str,
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
+    ) -> int:
+        sub = _ensure_str(sub)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         i = self.data.index(sub, self.start + start, min(self.end, end))
         return i - self.start
 
-    def rfind(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+    def rfind(
+        self,
+        sub: Self | str,
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
+    ) -> int:
+        sub = _ensure_str(sub)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         i = self.data.rfind(sub, self.start + start, min(self.end, end))
         return -1 if i == -1 else i - self.start
 
-    def rindex(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+    def rindex(
+        self,
+        sub: Self | str,
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
+    ) -> int:
+        sub = _ensure_str(sub)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         i = self.data.rindex(sub, self.start + start, min(self.end, end))
         return i - self.start
 
-    def __contains__(self, sub: Any) -> bool:
-        return self.find(sub) != -1
-
-    def count(self, sub: Any, start: int = 0, end: int = sys.maxsize) -> int:
-        if isinstance(sub, self.__class__):
-            sub = str(sub)
+    def count(
+        self,
+        sub: Self | str,
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
+    ) -> int:
+        sub = _ensure_str(sub)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         return self.data.count(sub, self.start + start, min(self.end, end))
 
+    def __contains__(self, sub: Self | str, /) -> bool:
+        return self.find(sub) != -1
+
     def startswith(
-        self, prefix: Any, start: int = 0, end: int = sys.maxsize,
+        self,
+        prefix: Self | str | tuple[Self | str, ...],
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
     ) -> bool:
-        if isinstance(prefix, self.__class__):
-            prefix = str(prefix)
+        if not isinstance(prefix, tuple):
+            prefix = _ensure_str(prefix)
+        else:
+            prefix = tuple(_ensure_str(x) for x in prefix)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         return self.data.startswith(
             prefix, self.start + start, min(self.end, end),
         )
 
     def endswith(
-        self, suffix: Any, start: int = 0, end: int = sys.maxsize,
+        self,
+        suffix: Self | str | tuple[Self | str, ...],
+        start: SupportsIndex | None = None,
+        end: SupportsIndex | None = None,
+        /,
     ) -> bool:
-        if isinstance(suffix, self.__class__):
-            suffix = str(suffix)
+        if not isinstance(suffix, tuple):
+            suffix = _ensure_str(suffix)
+        else:
+            suffix = tuple(_ensure_str(x) for x in suffix)
+        start = 0 if start is None else start.__index__()
+        end = sys.maxsize if end is None else end.__index__()
         return self.data.endswith(
             suffix, self.start + start, min(self.end, end),
         )
 
-    def removeprefix(self, prefix: Any, /) -> Self:
+    def removeprefix(self, prefix: Self | str, /) -> Self:
         if isinstance(prefix, self.__class__):
             prefix = str(prefix)
         if not self.startswith(prefix):
             return self
         return self.__class__(self, start=len(prefix))
 
-    def removesuffix(self, suffix, /) -> Self:
+    def removesuffix(self, suffix: Self | str, /) -> Self:
         if isinstance(suffix, self.__class__):
             suffix = str(suffix)
         if not self.endswith(suffix):
             return self
         return self.__class__(self, length=self.length - len(suffix))
 
-    def lstrip(self, chars: Self | str | None = None) -> Self:
+    def lstrip(self, chars: Self | str | None = None, /) -> Self:
         if chars is None:
             chars = self.__class__(string.whitespace)
         elif isinstance(chars, str):
@@ -214,7 +271,7 @@ class StrView:
             new_start += 1
         return self.__class__(self, start=new_start)
 
-    def rstrip(self, chars: Self | str | None = None) -> Self:
+    def rstrip(self, chars: Self | str | None = None, /) -> Self:
         if chars is None:
             chars = self.__class__(string.whitespace)
         elif isinstance(chars, str):
@@ -224,22 +281,22 @@ class StrView:
             new_length -= 1
         return self.__class__(self, length=new_length)
 
-    def partition(self, sep: Any) -> tuple[Self, Self, Self]:
+    def partition(self, sep: Self | str, /) -> tuple[Self, Self, Self]:
         i = self.find(sep)
         if i == -1:
-            empty = self.__class__(self, start=self.length)
-            return self, empty, empty
+            empty_at_end = self.__class__(self, start=self.length)
+            return self, empty_at_end, empty_at_end
         return (
             self.__class__(self, length=i),
             self.__class__(self, start=i, length=len(sep)),
             self.__class__(self, start=i + len(sep)),
         )
 
-    def rpartition(self, sep: Any) -> tuple[Self, Self, Self]:
+    def rpartition(self, sep: Self | str, /) -> tuple[Self, Self, Self]:
         i = self.rfind(sep)
         if i == -1:
-            empty = self.__class__(self, length=0)
-            return empty, empty, self
+            empty_at_start = self.__class__(self, length=0)
+            return empty_at_start, empty_at_start, self
         return (
             self.__class__(self, length=i),
             self.__class__(self, start=i, length=len(sep)),
@@ -247,8 +304,10 @@ class StrView:
         )
 
     def split(
-        self, sep: Self | str | None = None, maxsplit: int = -1,
+        self, sep: Self | str | None = None, maxsplit: SupportsIndex = -1,
     ) -> list[Self]:
+        maxsplit = maxsplit.__index__()
+
         if sep is None:
             whitespace = self.__class__(string.whitespace)
             parts: list[Self] = []
@@ -268,6 +327,9 @@ class StrView:
                 parts.append(self.__class__(self, start=i, length=j - i))
                 rest = self.__class__(self, start=j)
 
+        elif isinstance(sep, self.__class__):
+            sep = str(sep)
+
         parts: list[Self] = []
         rest = self
         while True:
@@ -280,8 +342,10 @@ class StrView:
                 return parts
 
     def rsplit(
-        self, sep: Self | str | None = None, maxsplit: int = -1,
+        self, sep: Self | str | None = None, maxsplit: SupportsIndex = -1,
     ) -> list[Self]:
+        maxsplit = maxsplit.__index__()
+
         if sep is None:
             whitespace = self.__class__(string.whitespace)
             parts: list[Self] = []
@@ -301,6 +365,9 @@ class StrView:
                 parts.append(self.__class__(self, start=j + 1, length=i - j))
                 rest = self.__class__(self, length=j + 1)
 
+        elif isinstance(sep, self.__class__):
+            sep = str(sep)
+
         parts: list[Self] = []
         rest = self
         while True:
@@ -313,20 +380,22 @@ class StrView:
                 return list(reversed(parts))
 
     def splitlines(self, keepends: bool = False) -> list[Self]:
+        # TODO: update this to handle other types of newlines
         lines = self.split('\n')
         if not keepends:
             return lines
         lines_with_ends: list[Self] = []
-        for line in lines:
-            try:
-                line_with_end = self.__class__(line, length=line.length + 1)
-            except IndexError:
-                lines_with_ends.append(line)
+        for i, line in enumerate(lines):
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                lines_with_ends.append(
+                    self.__class__(line, length=next_line.start - line.start)
+                )
             else:
-                lines_with_ends.append(line_with_end)
+                lines_with_ends.append(line)
         return lines_with_ends
 
-    def strip(self, chars: Self | str | None = None) -> Self:
+    def strip(self, chars: Self | str | None = None, /) -> Self:
         return self.lstrip(chars).rstrip(chars)
 
     # The methods below implement Python's str interface by just converting the
@@ -344,22 +413,22 @@ class StrView:
     def __hash__(self) -> int:
         return hash(str(self))
 
-    def __lt__(self, other: Any):
+    def __lt__(self, other: Self | str, /) -> bool:
         if isinstance(other, self.__class__):
             return str(self) < str(other)
         return str(self) < other
 
-    def __le__(self, other: Any):
+    def __le__(self, other: Self | str, /) -> bool:
         if isinstance(other, self.__class__):
             return str(self) <= str(other)
         return str(self) <= other
 
-    def __gt__(self, other: Any):
+    def __gt__(self, other: Self | str, /) -> bool:
         if isinstance(other, self.__class__):
             return str(self) > str(other)
         return str(self) > other
 
-    def __ge__(self, other: Any):
+    def __ge__(self, other: Self | str, /) -> bool:
         if isinstance(other, self.__class__):
             return str(self) >= str(other)
         return str(self) >= other
@@ -368,39 +437,51 @@ class StrView:
         return self.length
 
     @typing.overload
-    def __getitem__(self, index: int) -> Self:
+    def __getitem__(self, key: SupportsIndex, /) -> Self:
         ...
 
     @typing.overload
-    def __getitem__(self, index: slice) -> Self | str:
+    def __getitem__(self, key: slice, /) -> Self | str:
         ...
 
-    def __getitem__(self, index):
-        if isinstance(index, int):
-            return self.__class__(self, start=index, length=1)
-        if isinstance(index, slice) and index.step == 1:
-            return self.__class__(
-                self, start=index.start, length=index.stop - index.start,
-            )
-        return str(self)[index]
+    def __getitem__(self, key, /):
+        try:
+            key = key.__index__()
+        except AttributeError:
+            pass
+        else:
+            return self.__class__(self, start=key, length=1)
 
-    def __add__(self, other: Any) -> str:
+        if (
+            isinstance(key, slice)
+            and (key.step is None or key.step.__index__() == 1)
+        ):
+            return self.__class__(
+                self,
+                start=key.start.__index__(),
+                length=key.stop.__index__() - key.start.__index__(),
+            )
+        return str(self)[key]
+
+    def __add__(self, other: Self | str, /) -> str:
         if isinstance(other, self.__class__):
             return str(self) + str(other)
         return str(self) + other
 
-    def __radd__(self, other: Any) -> str:
+    def __radd__(self, other: str, /) -> str:
+        # If __radd__() gets called, the only valid case will be when other is
+        # an str. If other was a view, then __add__() would have been called.
         return other + str(self)
 
-    def __mul__(self, other: int) -> str:
-        return str(self) * other
+    def __mul__(self, other: SupportsIndex, /) -> str:
+        return str(self) * other.__index__()
 
-    __rmul__ = __mul__
+    __rmul__ = __mul__  # Multiplication is commutative for str
 
-    def __mod__(self, args: Any) -> str:
+    def __mod__(self, args: Any, /) -> str:
         return str(self) % args
 
-    def __rmod__(self, template: Any) -> str:
+    def __rmod__(self, template: Any, /) -> str:
         return template % str(self)
 
     def capitalize(self) -> str:
@@ -409,26 +490,35 @@ class StrView:
     def casefold(self) -> str:
         return str(self).casefold()
 
-    def center(self, width: int, *args: Any) -> str:
-        return str(self).center(width, *args)
+    def lower(self) -> str:
+        return str(self).lower()
 
-    def encode(
-        self,
-        encoding: str | None = 'utf-8',
-        errors: str | None = 'strict',
-    ) -> bytes:
-        encoding = 'utf-8' if encoding is None else encoding
-        errors = 'strict' if errors is None else errors
-        return str(self).encode(encoding, errors)
+    def swapcase(self) -> str:
+        return str(self).swapcase()
 
-    def expandtabs(self, tabsize: int = 8) -> str:
-        return str(self).expandtabs(tabsize)
+    def title(self) -> str:
+        return str(self).title()
 
-    def format(self, /, *args: Any, **kwargs: Any) -> str:
-        return str(self).format(*args, **kwargs)
+    def upper(self) -> str:
+        return str(self).upper()
 
-    def format_map(self, mapping: Any) -> str:
-        return str(self).format_map(mapping)
+    def center(self, width: SupportsIndex, fillchar: str = ' ', /) -> str:
+        return str(self).center(width.__index__(), fillchar)
+
+    def expandtabs(self, tabsize: SupportsIndex = 8) -> str:
+        return str(self).expandtabs(tabsize.__index__())
+
+    def ljust(self, width: SupportsIndex, fillchar: str = ' ', /) -> str:
+        return str(self).ljust(width.__index__(), fillchar)
+
+    def rjust(self, width: SupportsIndex, fillchar: str = ' ', /) -> str:
+        return str(self).rjust(width.__index__(), fillchar)
+
+    def zfill(self, width: SupportsIndex, /) -> str:
+        return str(self).zfill(width.__index__())
+
+    def join(self, iterable: Iterable[Self | str], /) -> str:
+        return str(self).join(_ensure_str(x) for x in iterable)
 
     def isalpha(self) -> bool:
         return str(self).isalpha()
@@ -466,38 +556,38 @@ class StrView:
     def isupper(self) -> bool:
         return str(self).isupper()
 
-    def join(self, seq: Any) -> str:
-        return str(self).join(seq)
+    maketrans = str.maketrans  # This one is a static method on str
 
-    def ljust(self, width: int, *args: Any) -> str:
-        return str(self).ljust(width, *args)
+    def translate(self, table: Any, /) -> str:
+        return str(self).translate(table)
 
-    def lower(self) -> str:
-        return str(self).lower()
-
-    maketrans = str.maketrans
-
-    def replace(self, old: Any, new: Any, /, count: int = -1) -> str:
-        if isinstance(old, self.__class__):
-            old = str(old)
-        if isinstance(new, self.__class__):
-            new = str(new)
+    def replace(
+        self, old: Self | str, new: Self | str, /, count: SupportsIndex = -1,
+    ) -> str:
+        old = _ensure_str(old)
+        new = _ensure_str(new)
+        count = count.__index__()
         return str(self).replace(old, new, count)
 
-    def rjust(self, width: int, *args: Any) -> str:
-        return str(self).rjust(width, *args)
+    def format(self, *args: Any, **kwargs: Any) -> str:
+        return str(self).format(*args, **kwargs)
 
-    def swapcase(self) -> str:
-        return str(self).swapcase()
+    def format_map(self, mapping: Any, /) -> str:
+        return str(self).format_map(mapping)
 
-    def title(self) -> str:
-        return str(self).title()
+    def encode(
+        self,
+        encoding: str | None = 'utf-8',
+        errors: str | None = 'strict',
+    ) -> bytes:
+        encoding = 'utf-8' if encoding is None else encoding
+        errors = 'strict' if errors is None else errors
+        return str(self).encode(encoding, errors)
 
-    def translate(self, *args: Any) -> str:
-        return str(self).translate(*args)
 
-    def upper(self) -> str:
-        return str(self).upper()
-
-    def zfill(self, width: int) -> str:
-        return str(self).zfill(width)
+def _ensure_str(s_or_sv: str | StrView) -> str:
+    if type(s_or_sv) is str:
+        return s_or_sv
+    if isinstance(s_or_sv, (StrView, str)):
+        return str(s_or_sv)
+    raise TypeError(f'expected str or str view, but got {type(s_or_sv)}')
