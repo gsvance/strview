@@ -106,8 +106,8 @@ class StrView:
     def lchop_int(self) -> tuple[int, Self]:
         i = 0
         while i < self.length:
-            char_at_i = self[i]
-            if char_at_i.isdigit() or (i == 0 and char_at_i.occurs_in('-+')):
+            char_at_i = self.get_char(i)
+            if char_at_i.isdigit() or (i == 0 and char_at_i in '-+'):
                 i += 1
             else:
                 break
@@ -275,14 +275,14 @@ class StrView:
     def lstrip(self, chars: Self | str | None = None, /) -> Self:
         chars = string.whitespace if chars is None else chars
         new_start = 0
-        while new_start < self.length and self[new_start].occurs_in(chars):
+        while new_start < self.length and self.get_char(new_start) in chars:
             new_start += 1
         return self.__class__(self, start=new_start)
 
     def rstrip(self, chars: Self | str | None = None, /) -> Self:
         chars = string.whitespace if chars is None else chars
         new_length = self.length
-        while new_length > 0 and self[new_length - 1].occurs_in(chars):
+        while new_length > 0 and self.get_char(new_length - 1) in chars:
             new_length -= 1
         return self.__class__(self, length=new_length)
 
@@ -320,7 +320,9 @@ class StrView:
             rest = self
             while True:
                 i = 0
-                while i < rest.length and rest[i].occurs_in(string.whitespace):
+                while (
+                    i < rest.length and rest.get_char(i) in string.whitespace
+                ):
                     i += 1
                 if i == rest.length:
                     return parts
@@ -330,7 +332,7 @@ class StrView:
                 j = i + 1
                 while (
                     j < rest.length
-                    and not rest[j].occurs_in(string.whitespace)
+                    and rest.get_char(j) not in string.whitespace
                 ):
                     j += 1
                 parts.append(self.__class__(self, start=i, length=j - i))
@@ -362,7 +364,7 @@ class StrView:
             rest = self
             while True:
                 i = rest.length - 1
-                while i >= 0 and rest[i].occurs_in(string.whitespace):
+                while i >= 0 and rest.get_char(i) in string.whitespace:
                     i -= 1
                 if i == -1:
                     return list(reversed(parts))
@@ -370,7 +372,7 @@ class StrView:
                     parts.append(self.__class__(rest, length=i + 1))
                     return list(reversed(parts))
                 j = i - 1
-                while j >= 0 and not rest[j].occurs_in(string.whitespace):
+                while j >= 0 and rest.get_char(j) not in string.whitespace:
                     j -= 1
                 parts.append(self.__class__(self, start=j + 1, length=i - j))
                 rest = self.__class__(self, length=j + 1)
@@ -468,6 +470,9 @@ class StrView:
             return self.__class__(self, start=key.start, length=length)
 
         return str(self)[key]
+
+    def get_char(self, index: SupportsIndex, /) -> str:
+        return str(self[index])  # Always an str of length 1
 
     def __add__(self, other: Self | str, /) -> str:
         if isinstance(other, self.__class__):
