@@ -213,6 +213,11 @@ class StrView:
     def __contains__(self, sub: Self | str, /) -> bool:
         return self.find(sub) != -1
 
+    def occurs_in(self, haystack: Self | str, /) -> bool:
+        if isinstance(haystack, self.__class__):
+            return self in haystack
+        return str(self) in haystack
+
     def startswith(
         self,
         prefix: Self | str | tuple[Self | str, ...],
