@@ -100,11 +100,10 @@ class StrView:
         )
 
     def lchop_int(self) -> tuple[int, Self]:
-        signs = self.__class__('-+')
         i = 0
         while i < self.length:
             char_at_i = self[i]
-            if char_at_i.isdigit() or (i == 0 and char_at_i in signs):
+            if char_at_i.isdigit() or (i == 0 and char_at_i.occurs_in('-+')):
                 i += 1
             else:
                 break
@@ -267,22 +266,16 @@ class StrView:
         return self.__class__(self, length=self.length - len(suffix))
 
     def lstrip(self, chars: Self | str | None = None, /) -> Self:
-        if chars is None:
-            chars = self.__class__(string.whitespace)
-        elif isinstance(chars, str):
-            chars = self.__class__(chars)
+        chars = string.whitespace if chars is None else chars
         new_start = 0
-        while new_start < self.length and self[new_start] in chars:
+        while new_start < self.length and self[new_start].occurs_in(chars):
             new_start += 1
         return self.__class__(self, start=new_start)
 
     def rstrip(self, chars: Self | str | None = None, /) -> Self:
-        if chars is None:
-            chars = self.__class__(string.whitespace)
-        elif isinstance(chars, str):
-            chars = self.__class__(chars)
+        chars = string.whitespace if chars is None else chars
         new_length = self.length
-        while new_length > 0 and self[new_length - 1] in chars:
+        while new_length > 0 and self[new_length - 1].occurs_in(chars):
             new_length -= 1
         return self.__class__(self, length=new_length)
 
@@ -314,12 +307,11 @@ class StrView:
         maxsplit = maxsplit.__index__()
 
         if sep is None:
-            whitespace = self.__class__(string.whitespace)
             parts: list[Self] = []
             rest = self
             while True:
                 i = 0
-                while i < rest.length and rest[i] in whitespace:
+                while i < rest.length and rest[i].occurs_in(string.whitespace):
                     i += 1
                 if i == rest.length:
                     return parts
@@ -327,7 +319,10 @@ class StrView:
                     parts.append(self.__class__(rest, start=i))
                     return parts
                 j = i + 1
-                while j < rest.length and rest[j] not in whitespace:
+                while (
+                    j < rest.length
+                    and not rest[j].occurs_in(string.whitespace)
+                ):
                     j += 1
                 parts.append(self.__class__(self, start=i, length=j - i))
                 rest = self.__class__(self, start=j)
@@ -352,12 +347,11 @@ class StrView:
         maxsplit = maxsplit.__index__()
 
         if sep is None:
-            whitespace = self.__class__(string.whitespace)
             parts: list[Self] = []
             rest = self
             while True:
                 i = rest.length - 1
-                while i >= 0 and rest[i] in whitespace:
+                while i >= 0 and rest[i].occurs_in(string.whitespace):
                     i -= 1
                 if i == -1:
                     return list(reversed(parts))
@@ -365,7 +359,7 @@ class StrView:
                     parts.append(self.__class__(rest, length=i + 1))
                     return list(reversed(parts))
                 j = i - 1
-                while j >= 0 and rest[j] not in whitespace:
+                while j >= 0 and not rest[j].occurs_in(string.whitespace):
                     j -= 1
                 parts.append(self.__class__(self, start=j + 1, length=i - j))
                 rest = self.__class__(self, length=j + 1)
