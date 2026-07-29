@@ -144,8 +144,13 @@ class StrView:
             return str(self) == str(other)
         return str(self) == other
 
-    # There's no need to define __ne__() since object has a default
-    # implementation that just negates whatever __eq__() returns.
+    # No need to define __ne__() since object has a default implementation
+
+    def eq_ignorecase(self, other: Self | str, /) -> bool:
+        if isinstance(other, self.__class__):
+            if self.length != other.length:
+                return False
+        return self.casefold() == other.casefold()
 
     def find(
         self,
