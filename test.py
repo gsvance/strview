@@ -101,13 +101,13 @@ class TestStrView(unittest.TestCase):
     def test_take_while(self) -> None:
         # Take while is_alpha
         input_ = StrView("hello1234")
-        hello, input_ = input_.ltake_while(is_alpha)
+        hello = input_.ltake_while(is_alpha)
         self.assertEqual(StrView("hello1234"), input_)
         self.assertEqual(StrView("hello"), hello)
 
         # Overtake while
         input_ = StrView("helloworld")
-        hello, input_ = input_.ltake_while(is_alpha)
+        hello = input_.ltake_while(is_alpha)
         self.assertEqual(StrView("helloworld"), input_)
         self.assertEqual(StrView("helloworld"), hello)
 
